@@ -310,6 +310,8 @@ app.get('/', async (req, res) => {
 
 // GET endpoint
 app.get('/generate-pdf', async (req, res) => {
+  const clientIP = req.ip; // Get the client's IP address
+  console.log('GET-Client IP:', clientIP);
   try {
     const { domain, includedSpeed, includedUnits } = req.query;
     
@@ -344,6 +346,8 @@ app.get('/generate-pdf', async (req, res) => {
 
 // POST endpoint
 app.post('/generate-pdf', async (req, res) => {
+  const clientIP = req.ip; // Get the client's IP address
+  console.log('POST-Client IP:', clientIP);
   try {
     const data = {
       domain: req.body.domain || 'grove.xiber.net',
@@ -369,6 +373,8 @@ app.post('/generate-pdf', async (req, res) => {
 
 // New endpoint for JSON file upload
 app.post('/upload-json', async (req, res) => {
+  const clientIP = req.ip; // Get the client's IP address
+  console.log('POST_JSON-Client IP:', clientIP);
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({ error: 'No files were uploaded' });
