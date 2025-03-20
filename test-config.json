@@ -1,0 +1,17 @@
+{
+  "domain": "grove.xiber.net",
+  "includedSpeed": "500/500",
+  "includedUnits": "MBPS",
+  "additionalSpeeds": [
+    {
+      "speed": "1/1",
+      "units": "GBPS",
+      "price": "25"
+    },
+    {
+      "speed": "2/2",
+      "units": "GBPS",
+      "price": "35"
+    }
+  ]
+} 
