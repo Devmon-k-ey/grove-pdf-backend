@@ -302,6 +302,12 @@ async function modifyPDF(data) {
   }
 }
 
+//GET test endpoint
+app.get('/', async (req, res) => {
+  console.log('Live test...');
+  res.send('Live test...')
+})
+
 // GET endpoint
 app.get('/generate-pdf', async (req, res) => {
   try {

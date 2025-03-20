@@ -53,7 +53,7 @@ read -p "Output filename [grove-output.pdf]: " OUTPUT
 OUTPUT=${OUTPUT:-grove-output.pdf}
 
 # Set server URL to default value without prompting
-SERVER_URL="http://127.0.0.1:4002"
+SERVER_URL="https://grove-pdf-backend.onrender.com"
 
 echo
 echo "Generating PDF..."
