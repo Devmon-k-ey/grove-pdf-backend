@@ -56,64 +56,32 @@ if "%TV_SKIP%"=="" set TV_SKIP=Y
 if /I "%TV_SKIP%"=="Y" goto SkipTV
 
 echo TV Addon 1:
-set /p TV_TITLE1=Title [XiberTV Gold]: 
-if "%TV_TITLE1%"=="" set TV_TITLE1=XiberTV Gold
+set /p TV_TITLE1=Title [Premium Channels]: 
+if "%TV_TITLE1%"=="" set TV_TITLE1=Premium Channels
 
-set /p TV_SUBTITLE1=Subtitle [130+ Channels]: 
-if "%TV_SUBTITLE1%"=="" set TV_SUBTITLE1=130+ Channels
+set /p TV_SUBTITLE1=Subtitle [Showtime, STARZ, Encore, etc]: 
+if "%TV_SUBTITLE1%"=="" set TV_SUBTITLE1=Showtime, STARZ, Encore, etc
 
-set /p TV_AMOUNT1=Price [$39.99]: 
-if "%TV_AMOUNT1%"=="" set TV_AMOUNT1=39.99
-
-echo.
-echo TV Addons (press Enter to skip all TV data):
-set /p TV_SKIP=Skip TV data? [Y/n]: 
-if "%TV_SKIP%"=="" set TV_SKIP=Y
-if /I "%TV_SKIP%"=="Y" goto SkipTV
-
-echo TV Addon 2:
-set /p TV_TITLE2=Title [XiberTV Platinum]: 
-if "%TV_TITLE2%"=="" set TV_TITLE2=XiberTV Platinum
-
-set /p TV_SUBTITLE2=Subtitle [130+ Channels]: 
-if "%TV_SUBTITLE2%"=="" set TV_SUBTITLE2=130+ Channels
-
-set /p TV_AMOUNT2=Price [$54.99]: 
-if "%TV_AMOUNT2%"=="" set TV_AMOUNT2=54.99
+set /p TV_AMOUNT1=Price [$15]: 
+if "%TV_AMOUNT1%"=="" set TV_AMOUNT1=15
 
 echo.
-echo TV Addons (press Enter to skip all TV data):
-set /p TV_SKIP=Skip TV data? [Y/n]: 
-if "%TV_SKIP%"=="" set TV_SKIP=Y
-if /I "%TV_SKIP%"=="Y" goto SkipTV
+echo TV Addon 2 (leave blank to skip):
+set /p TV_TITLE2=Title: 
 
-echo TV Addon 3:
-set /p TV_TITLE3=Title [Premium Channels]: 
-if "%TV_TITLE3%"=="" set TV_TITLE3=Premium Channels
+if NOT "%TV_TITLE2%"=="" (
+  set /p TV_SUBTITLE2=Subtitle: 
+  set /p TV_AMOUNT2=Price: 
+)
 
-set /p TV_SUBTITLE3=Subtitle [Showtime, STARZ, Encore, etc]: 
-if "%TV_SUBTITLE3%"=="" set TV_SUBTITLE3=Showtime, STARZ, Encore, etc
+echo.
+echo TV Addon 3 (leave blank to skip):
+set /p TV_TITLE3=Title: 
 
-set /p TV_AMOUNT3=Price [$15]: 
-if "%TV_AMOUNT3%"=="" set TV_AMOUNT3=15
-
-@REM echo.
-@REM echo TV Addon 2 (leave blank to skip):
-@REM set /p TV_TITLE2=Title: 
-
-@REM if NOT "%TV_TITLE2%"=="" (
-@REM   set /p TV_SUBTITLE2=Subtitle: 
-@REM   set /p TV_AMOUNT2=Price: 
-@REM )
-
-@REM echo.
-@REM echo TV Addon 3 (leave blank to skip):
-@REM set /p TV_TITLE3=Title: 
-
-@REM if NOT "%TV_TITLE3%"=="" (
-@REM   set /p TV_SUBTITLE3=Subtitle: 
-@REM   set /p TV_AMOUNT3=Price: 
-@REM )
+if NOT "%TV_TITLE3%"=="" (
+  set /p TV_SUBTITLE3=Subtitle: 
+  set /p TV_AMOUNT3=Price: 
+)
 
 :SkipTV
 echo.
