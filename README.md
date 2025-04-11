@@ -26,7 +26,7 @@ npm install
 npm start
 ```
 
-The server will start at http://localhost:4002 by default.
+The server will start at https://grove-pdf-backend.onrender.com by default.
 
 ### CLI Tool
 

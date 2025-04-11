@@ -49,6 +49,41 @@ if [ ! -z "$ADD_SPEED3" ]; then
 fi
 
 echo
+echo "TV Addons (press Enter to skip all TV data):"
+read -p "Skip TV data? [Y/n]: " TV_SKIP
+TV_SKIP=${TV_SKIP:-Y}
+
+if [[ "${TV_SKIP,,}" != "y" ]]; then
+  echo "TV Addon 1:"
+  read -p "Title [Premium Channels]: " TV_TITLE1
+  TV_TITLE1=${TV_TITLE1:-"Premium Channels"}
+
+  read -p "Subtitle [Showtime, STARZ, Encore, etc]: " TV_SUBTITLE1
+  TV_SUBTITLE1=${TV_SUBTITLE1:-"Showtime, STARZ, Encore, etc"}
+
+  read -p "Price [$15]: " TV_AMOUNT1
+  TV_AMOUNT1=${TV_AMOUNT1:-15}
+
+  echo
+  echo "TV Addon 2 (leave blank to skip):"
+  read -p "Title: " TV_TITLE2
+
+  if [ ! -z "$TV_TITLE2" ]; then
+    read -p "Subtitle: " TV_SUBTITLE2
+    read -p "Price: " TV_AMOUNT2
+  fi
+
+  echo
+  echo "TV Addon 3 (leave blank to skip):"
+  read -p "Title: " TV_TITLE3
+
+  if [ ! -z "$TV_TITLE3" ]; then
+    read -p "Subtitle: " TV_SUBTITLE3
+    read -p "Price: " TV_AMOUNT3
+  fi
+fi
+
+echo
 read -p "Output filename [grove-output.pdf]: " OUTPUT
 OUTPUT=${OUTPUT:-grove-output.pdf}
 
@@ -88,6 +123,36 @@ if [ ! -z "$ADD_SPEED3" ]; then
     JSON="$JSON,"
   fi
   JSON="$JSON{ \"speed\": \"$ADD_SPEED3\", \"units\": \"$ADD_UNITS3\", \"price\": \"$ADD_PRICE3\" }"
+fi
+
+JSON="$JSON],
+  \"tv_addons\": ["
+
+if [[ "${TV_SKIP,,}" != "y" ]]; then
+  FIRST_ITEM=true
+
+  # Add first TV addon if present
+  if [ ! -z "$TV_TITLE1" ]; then
+    JSON="$JSON{ \"title\": \"$TV_TITLE1\", \"subtitle\": \"$TV_SUBTITLE1\", \"amount\": \"$TV_AMOUNT1\" }"
+    FIRST_ITEM=false
+  fi
+
+  # Add second TV addon if present
+  if [ ! -z "$TV_TITLE2" ]; then
+    if [ "$FIRST_ITEM" = false ]; then
+      JSON="$JSON,"
+    fi
+    JSON="$JSON{ \"title\": \"$TV_TITLE2\", \"subtitle\": \"$TV_SUBTITLE2\", \"amount\": \"$TV_AMOUNT2\" }"
+    FIRST_ITEM=false
+  fi
+
+  # Add third TV addon if present
+  if [ ! -z "$TV_TITLE3" ]; then
+    if [ "$FIRST_ITEM" = false ]; then
+      JSON="$JSON,"
+    fi
+    JSON="$JSON{ \"title\": \"$TV_TITLE3\", \"subtitle\": \"$TV_SUBTITLE3\", \"amount\": \"$TV_AMOUNT3\" }"
+  fi
 fi
 
 JSON="$JSON]

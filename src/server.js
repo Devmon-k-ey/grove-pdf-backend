@@ -10,7 +10,7 @@ const multer = require('multer');
 const fileUpload = require('express-fileupload');
 
 const app = express();
-const PORT = process.env.PORT || 4002;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
@@ -38,33 +38,39 @@ async function generateQRCode(text) {
 // Main function to modify PDF
 async function modifyPDF(data) {
   try {
-    const pdfPath = path.join(__dirname, '../grove.pdf');
+    const pdfPath = path.join(__dirname, './pdfs/grove.pdf');
     const existingPdfBytes = fs.readFileSync(pdfPath);
     
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     pdfDoc.registerFontkit(fontkit);
 
     // Load fonts
-    const brandonBoldFontPath = path.join(__dirname, '../Brandon Grotesque Bold.ttf');
-    const graphieBoldFontPath = path.join(__dirname, '../Graphie Bold.ttf');
+    const brandonBoldFontPath = path.join(__dirname, './fonts/Brandon Grotesque Bold.ttf');
+    const graphieBoldFontPath = path.join(__dirname, './fonts/Graphie Bold.ttf');
+    const graphieSemiBoldFontPath = path.join(__dirname, './fonts/Graphie_SemiBold.otf');
     
     const brandonBoldFontBytes = fs.readFileSync(brandonBoldFontPath);
     const graphieBoldFontBytes = fs.readFileSync(graphieBoldFontPath);
+    const graphieSemiBoldFontBytes = fs.readFileSync(graphieSemiBoldFontPath);
     
     const brandonBold = await pdfDoc.embedFont(brandonBoldFontBytes);
     const graphieBold = await pdfDoc.embedFont(graphieBoldFontBytes);
-
-    // Load unit image
-    const unitImagePath = path.join(__dirname, '../unit.png');
+    const graphieSemiBold = await pdfDoc.embedFont(graphieSemiBoldFontBytes);
+    // Load images
+    const unitImagePath = path.join(__dirname, './images/unit.png');
     const unitImageBytes = fs.readFileSync(unitImagePath);
     const unitImage = await pdfDoc.embedPng(unitImageBytes);
     const unitImageDims = unitImage.scale(0.14);
 
-    // Load remover image
-    const removerImagePath = path.join(__dirname, '../remover.png');
+    const removerImagePath = path.join(__dirname, './images/remover.png');
     const removerImageBytes = fs.readFileSync(removerImagePath);
     const removerImage = await pdfDoc.embedPng(removerImageBytes);
     const removerImageDims = removerImage.scale(0.14);
+
+    // Load cheetah image for TV section fallback
+    const cheetahImagePath = path.join(__dirname, './images/cheetah.png');
+    const cheetahImageBytes = fs.readFileSync(cheetahImagePath);
+    const cheetahImage = await pdfDoc.embedPng(cheetahImageBytes);
 
     // Generate QR Code
     const qrDataUrl = await generateQRCode(data.domain);
@@ -96,7 +102,6 @@ async function modifyPDF(data) {
         height: removerImageDims.height,
       });
 
-
       //////////////////////////////////////////////////     
       // for (let i = 0; i < 100; i ++) {
       //   page.drawText((i * 10).toString(), {
@@ -107,10 +112,10 @@ async function modifyPDF(data) {
       //     color: rgb(0, 0, 0)
       //   });
 
-      //   page.drawText((i * 10).toString(), {
+      //   page.drawText((i).toString(), {
       //     x: i * 10,
       //     y: height - 10,
-      //     size: 8,
+      //     size: 6,
       //     font: graphieBold,
       //     color: rgb(0, 0, 0)
       //   });
@@ -196,7 +201,7 @@ async function modifyPDF(data) {
           x: 263,
           y: baseY + (numAdditionalSpeeds === 1 ? 50 : numAdditionalSpeeds === 2 ? 42 : 33),
           size: 10,
-          font: graphieBold,
+          font: graphieSemiBold,
           color: rgb(0.263, 0.306, 0.631)
         });
         
@@ -293,6 +298,106 @@ async function modifyPDF(data) {
         width: 60,
         height: 60,
       });
+
+      // After drawing additional speeds section, add TV section
+      if (data.tv_addons && data.tv_addons.length > 0) {
+
+        // Set White image to remove background
+        page.drawImage(removerImage, {
+          x: 0,
+          y: 110,
+          width: 280,
+          height: 180,
+        });
+        
+        const tvAddons = data.tv_addons.slice(0, 3); // Limit to 3 items
+        const tvBaseY = height - 575; // Adjust this Y position as needed
+        const tvBaseX = 58;
+        const tvSpacing = 38;
+
+        //Draw title for TV data
+        page.drawText("T V    O P T I O N S", {
+          x: 105,
+          y: 266,
+          size: 12,
+          font: graphieSemiBold,
+          color: rgb(0.263, 0.306, 0.631)
+        });
+        page.drawText("Live TV & Streaming Services for Roku & IOS devices", {
+          x: 60,
+          y: 252,
+          size: 9,
+          font: graphieBold,
+          color: rgb(0.55, 0.55, 0.55)
+        });
+        
+        for (let i = 0; i < tvAddons.length; i++) {
+          const addon = tvAddons[i];
+          const currentY = tvBaseY - (i * tvSpacing);
+
+          // Draw title
+          page.drawText(addon.title, {
+            x: tvBaseX,
+            y: currentY,
+            size: 16,
+            font: graphieBold,
+            color: rgb(0, 0, 0)
+          });
+
+          // Draw subtitle
+          page.drawText(addon.subtitle, {
+            x: tvBaseX,
+            y: currentY - 13,
+            size: 10,
+            font: graphieSemiBold,
+            color: rgb(0.98, 0.686, 0.094)
+          });
+
+          // Calculate total width needed for price section
+          const priceText = addon.amount;
+          const dollarWidth = getTextWidth('$', graphieBold, 16);
+          const priceWidth = getTextWidth(priceText, graphieBold, 16);
+          const perMonthWidth = getTextWidth('/mo', graphieBold, 9);
+          const totalWidth = dollarWidth + priceWidth + 5 + perMonthWidth; // 5 is spacing between price and /mo
+
+          // Right align the entire price section at x=500
+          const rightEdge = 268;
+          const priceStartX = rightEdge - totalWidth;
+
+          page.drawText("$" + priceText, {
+            x: priceStartX + dollarWidth + 2,
+            y: currentY,
+            size: 16,
+            font: graphieBold,
+            color: rgb(0, 0, 0)
+          });
+
+          page.drawText('/mo', {
+            x: priceStartX + dollarWidth + priceWidth + 12,
+            y: currentY + 5,
+            size: 9,
+            font: graphieBold,
+            color: rgb(0, 0, 0)
+          });
+        }
+      } else {
+        // Set White image to remove background
+        page.drawImage(removerImage, {
+          x: 0,
+          y: 0,
+          width: 280,
+          height: 290,
+        });
+        // Draw cheetah image if no TV data
+        const cheetahWidth = 218;
+        const cheetahHeight = 277;
+        page.drawImage(cheetahImage, {
+          x: 0,
+          y: 0,
+          width: cheetahWidth,
+          height: cheetahHeight
+        });
+      }
     }
 
     return await pdfDoc.save();
@@ -353,7 +458,8 @@ app.post('/generate-pdf', async (req, res) => {
       domain: req.body.domain || 'grove.xiber.net',
       includedSpeed: req.body.includedSpeed || '400/400',
       includedUnits: req.body.includedUnits || 'MBPS',
-      additionalSpeeds: req.body.additionalSpeeds || []
+      additionalSpeeds: req.body.additionalSpeeds || [],
+      tv_addons: req.body.tv_addons || []
     };
 
     // Limit to max 3 additional speeds
@@ -395,7 +501,8 @@ app.post('/upload-json', async (req, res) => {
         domain: jsonData.domain || 'grove.xiber.net',
         includedSpeed: jsonData.includedSpeed || '400/400',
         includedUnits: jsonData.includedUnits || 'MBPS',
-        additionalSpeeds: jsonData.additionalSpeeds || []
+        additionalSpeeds: jsonData.additionalSpeeds || [],
+        tv_addons: jsonData.tv_addons || []
       };
 
       // Limit to max 3 additional speeds
