@@ -89,7 +89,7 @@ set /p OUTPUT=Output filename [grove-output.pdf]:
 if "%OUTPUT%"=="" set OUTPUT=grove-output.pdf
 
 REM Set server URL to default value without prompting
-set SERVER_URL=http://localhost:4000
+set SERVER_URL=https://grove-pdf-backend.onrender.com
 
 echo.
 echo Generating PDF...

@@ -432,11 +432,24 @@ app.get('/generate-pdf', async (req, res) => {
       }
     }
 
+    // Parse TV addons from query params
+    const tv_addons = [];
+    for (let i = 1; i <= 3; i++) {
+      if (req.query[`tvTitle${i}`]) {
+        tv_addons.push({
+          title: req.query[`tvTitle${i}`],
+          subtitle: req.query[`tvSubtitle${i}`],
+          amount: req.query[`tvAmount${i}`]
+        });
+      }
+    }
+
     const data = {
       domain: domain || 'grove.xiber.net',
       includedSpeed: includedSpeed || '400/400',
       includedUnits: includedUnits || 'MBPS',
-      additionalSpeeds
+      additionalSpeeds,
+      tv_addons
     };
 
     const pdfBytes = await modifyPDF(data);

@@ -1,6 +1,6 @@
 # Grove PDF Editor
 
-A tool for automatically generating custom Grove PDF files with configurable speeds, prices, and domain information.
+A tool for automatically generating custom Grove PDF files with configurable speeds, prices, domain information, and TV options.
 
 ## Features
 
@@ -9,6 +9,8 @@ A tool for automatically generating custom Grove PDF files with configurable spe
 - Supports POST requests with JSON data
 - Simple CLI tool for easy command-line usage
 - Supports up to 3 additional speed/unit/price configurations
+- Supports up to 3 TV addon packages
+- Automatic fallback to cheetah image when no TV data is provided
 
 ## Installation
 
@@ -46,8 +48,21 @@ This will make the `grove-pdf` command available globally on your system.
 Generate a PDF using query parameters:
 
 ```
-GET /generate-pdf?domain=example.com&includedSpeed=400/400&includedUnits=MBPS&speed1=1/1&units1=GBPS&price1=25
+GET /generate-pdf?domain=example.com&includedSpeed=400/400&includedUnits=MBPS&speed1=1/1&units1=GBPS&price1=25&tvTitle1=Premium Channels&tvSubtitle1=Showtime, STARZ, Encore&tvAmount1=15
 ```
+
+Query Parameters:
+- `domain`: Domain name
+- `includedSpeed`: Base speed (e.g., "400/400")
+- `includedUnits`: Base speed units (e.g., "MBPS")
+- For each additional speed (1-3):
+  - `speedN`: Speed value
+  - `unitsN`: Speed units
+  - `priceN`: Price
+- For each TV addon (1-3):
+  - `tvTitleN`: Package title
+  - `tvSubtitleN`: Package description
+  - `tvAmountN`: Monthly price
 
 #### POST /generate-pdf
 
@@ -69,6 +84,18 @@ Generate a PDF using a JSON request body:
       "units": "GBPS",
       "price": "35"
     }
+  ],
+  "tv_addons": [
+    {
+      "title": "Premium Channels",
+      "subtitle": "Showtime, STARZ, Encore, etc",
+      "amount": "15"
+    },
+    {
+      "title": "Sports Package",
+      "subtitle": "ESPN+, NFL Network, MLB.TV",
+      "amount": "20"
+    }
   ]
 }
 ```
@@ -78,36 +105,24 @@ Generate a PDF using a JSON request body:
 #### Using GET Request
 
 ```bash
-# Basic usage
-grove-pdf get -o output.pdf
+# Basic usage with internet and TV options
+grove-pdf get -o output.pdf \
+  --domain example.com \
+  --speed1 1/1 --units1 GBPS --price1 25 \
+  --tvTitle1 "Premium Channels" --tvSubtitle1 "Showtime, STARZ, Encore" --tvAmount1 15
 
-# With custom domain and included speed
-grove-pdf get -d example.com -s 500/500 -u MBPS -o output.pdf
-
-# With one additional speed
-grove-pdf get --speed1 1/1 --units1 GBPS --price1 25 -o output.pdf
-
-# With multiple additional speeds
-grove-pdf get --speed1 1/1 --units1 GBPS --price1 25 \
-              --speed2 2/2 --units2 GBPS --price2 35 \
-              --speed3 3/3 --units3 GBPS --price3 45 \
-              -o output.pdf
+# Complete example with multiple speeds and TV packages
+grove-pdf get \
+  --domain example.com \
+  --includedSpeed 500/500 --includedUnits MBPS \
+  --speed1 1/1 --units1 GBPS --price1 25 \
+  --speed2 2/2 --units2 GBPS --price2 35 \
+  --tvTitle1 "Premium Channels" --tvSubtitle1 "Showtime, STARZ, Encore" --tvAmount1 15 \
+  --tvTitle2 "Sports Package" --tvSubtitle2 "ESPN+, NFL Network" --tvAmount2 20 \
+  -o output.pdf
 ```
 
-#### Using POST Request
-
-```bash
-# Basic usage with command line parameters
-grove-pdf post -o output.pdf
-
-# With custom values
-grove-pdf post -d example.com -s 500/500 -u MBPS \
-               --speed1 1/1 --units1 GBPS --price1 25 \
-               -o output.pdf
-
-# Using a JSON configuration file
-grove-pdf post -f config.json -o output.pdf
-```
+#### Using POST Request with JSON File
 
 Example JSON configuration (`config.json`):
 
@@ -127,9 +142,33 @@ Example JSON configuration (`config.json`):
       "units": "GBPS",
       "price": "35"
     }
+  ],
+  "tv_addons": [
+    {
+      "title": "Premium Channels",
+      "subtitle": "Showtime, STARZ, Encore, etc",
+      "amount": "15"
+    },
+    {
+      "title": "Sports Package",
+      "subtitle": "ESPN+, NFL Network, MLB.TV",
+      "amount": "20"
+    },
+    {
+      "title": "Kids & Family",
+      "subtitle": "Disney+, Nickelodeon, PBS Kids",
+      "amount": "10"
+    }
   ]
 }
 ```
+
+```bash
+# Using a JSON configuration file
+grove-pdf post -f config.json -o output.pdf
+```
+
+Note: If no TV addons are specified in any request type, the PDF will automatically display the cheetah image in the TV section.
 
 ## Deployment
 
