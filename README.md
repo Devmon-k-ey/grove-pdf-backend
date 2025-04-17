@@ -12,40 +12,13 @@ A tool for automatically generating custom Grove PDF files with configurable spe
 - Supports up to 3 TV addon packages
 - Automatic fallback to cheetah image when no TV data is provided
 
-## Installation
-
-### Server
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd pdf-editor
-
-# Install dependencies
-npm install
-
-# Start the server
-npm start
-```
-
-The server will start at https://grove-pdf-backend.onrender.com by default.
-
-### CLI Tool
-
-```bash
-# Install the CLI tool globally
-npm run install-cli
-```
-
-This will make the `grove-pdf` command available globally on your system.
-
 ## Usage
 
 ### Server API
 
 #### GET /generate-pdf
 
-Generate a PDF using query parameters:
+Generate a PDF using query parameters (legacy format):
 
 ```
 GET /generate-pdf?domain=example.com&includedSpeed=400/400&includedUnits=MBPS&speed1=1/1&units1=GBPS&price1=25&tvTitle1=Premium Channels&tvSubtitle1=Showtime, STARZ, Encore&tvAmount1=15
@@ -66,8 +39,9 @@ Query Parameters:
 
 #### POST /generate-pdf
 
-Generate a PDF using a JSON request body:
+Generate a PDF using a JSON request body. Two data formats are supported:
 
+**Legacy Format:**
 ```json
 {
   "domain": "example.com",
@@ -96,76 +70,81 @@ Generate a PDF using a JSON request body:
       "subtitle": "ESPN+, NFL Network, MLB.TV",
       "amount": "20"
     }
+  ]
+}
+```
+
+**New Format:**
+```json
+{
+  "domain": "grove.xiber.net",
+  "speeds": [
+    {"speed": "400", "units": "Mbps", "included": true},
+    {"speed": "500", "units": "Mbps", "price": 15},
+    {"speed": "1", "units": "Gbps", "price": 25}
+  ],
+  "tv": [
+    {"title": "XiberTV Gold", "subtitle": "130+ Channels", "amount": "39.99"},
+    {"title": "XiberTV Platinum", "subtitle": "150+ Channels", "amount": "45.99"}
+  ],
+  "tv_addons": [
+    {"title": "Premium Channels", "subtitle": "Showtime, STARZ, Encore, etc", "amount": "15"}
   ]
 }
 ```
 
 ### CLI Tool
 
-#### Using GET Request
+#### Using Legacy Format (GET Request)
 
 ```bash
 # Basic usage with internet and TV options
 grove-pdf get -o output.pdf \
   --domain example.com \
+  --included-speed 400/400 --included-units MBPS \
   --speed1 1/1 --units1 GBPS --price1 25 \
   --tvTitle1 "Premium Channels" --tvSubtitle1 "Showtime, STARZ, Encore" --tvAmount1 15
-
-# Complete example with multiple speeds and TV packages
-grove-pdf get \
-  --domain example.com \
-  --includedSpeed 500/500 --includedUnits MBPS \
-  --speed1 1/1 --units1 GBPS --price1 25 \
-  --speed2 2/2 --units2 GBPS --price2 35 \
-  --tvTitle1 "Premium Channels" --tvSubtitle1 "Showtime, STARZ, Encore" --tvAmount1 15 \
-  --tvTitle2 "Sports Package" --tvSubtitle2 "ESPN+, NFL Network" --tvAmount2 20 \
-  -o output.pdf
 ```
 
-#### Using POST Request with JSON File
+#### Using New Format
 
-Example JSON configuration (`config.json`):
-
-```json
-{
-  "domain": "example.com",
-  "includedSpeed": "400/400",
-  "includedUnits": "MBPS",
-  "additionalSpeeds": [
-    {
-      "speed": "1/1",
-      "units": "GBPS",
-      "price": "25"
-    },
-    {
-      "speed": "2/2",
-      "units": "GBPS",
-      "price": "35"
-    }
-  ],
-  "tv_addons": [
-    {
-      "title": "Premium Channels",
-      "subtitle": "Showtime, STARZ, Encore, etc",
-      "amount": "15"
-    },
-    {
-      "title": "Sports Package",
-      "subtitle": "ESPN+, NFL Network, MLB.TV",
-      "amount": "20"
-    },
-    {
-      "title": "Kids & Family",
-      "subtitle": "Disney+, Nickelodeon, PBS Kids",
-      "amount": "10"
-    }
-  ]
-}
+```bash
+# Create PDF with new data format
+grove-pdf create -o output.pdf \
+  --domain grove.xiber.net \
+  --incSpeed 400 --incUnits Mbps \
+  --addSpeed1 500 --addUnits1 Mbps --addPrice1 15 \
+  --addSpeed2 1 --addUnits2 Gbps --addPrice2 25 \
+  --tvTitle1 "XiberTV Gold" --tvSubtitle1 "130+ Channels" --tvAmount1 39.99 \
+  --tvTitle2 "XiberTV Platinum" --tvSubtitle2 "150+ Channels" --tvAmount2 45.99 \
+  --addonTitle "Premium Channels" --addonSubtitle "Showtime, STARZ, Encore, etc" --addonAmount 15
 ```
+
+#### Using JSON File (Both Formats Supported)
 
 ```bash
 # Using a JSON configuration file
 grove-pdf post -f config.json -o output.pdf
+```
+
+Example JSON configuration (`config.json`) in new format:
+
+```json
+{
+  "domain": "grove.xiber.net",
+  "speeds": [
+    {"speed": "400", "units": "Mbps", "included": true},
+    {"speed": "500", "units": "Mbps", "price": 15},
+    {"speed": "1", "units": "Gbps", "price": 25}
+  ],
+  "tv": [
+    {"title": "XiberTV Gold", "subtitle": "130+ Channels", "amount": "39.99"},
+    {"title": "XiberTV Platinum", "subtitle": "150+ Channels", "amount": "45.99"}
+  ],
+  "tv_addons": [
+    {"title": "Premium Channels", "subtitle": "Showtime, STARZ, Encore, etc", "amount": "15"}
+  ]
+}
 ```
 
 Note: If no TV addons are specified in any request type, the PDF will automatically display the cheetah image in the TV section.

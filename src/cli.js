@@ -16,8 +16,6 @@ program
 const addCommonOptions = (command) => {
   return command
     .option('-d, --domain <domain>', 'Domain for the QR code', 'grove.xiber.net')
-    .option('-s, --included-speed <speed>', 'Included speed', '400/400')
-    .option('-u, --included-units <units>', 'Included speed units', 'MBPS')
     .option('-o, --output <file>', 'Output file name', 'grove-output.pdf')
     .option('--url <url>', 'Custom service URL', 'http://127.0.0.1:4002');
 };
@@ -65,10 +63,12 @@ function makeRequest(url, method, postData = null) {
   });
 }
 
-// GET command
+// GET command - legacy format
 program
   .command('get')
-  .description('Generate PDF using a GET request')
+  .description('Generate PDF using a GET request (legacy format)')
+  .option('-s, --included-speed <speed>', 'Included speed', '400/400')
+  .option('-u, --included-units <units>', 'Included speed units', 'MBPS')
   .option('--speed1 <speed>', 'Additional speed 1')
   .option('--units1 <units>', 'Additional speed 1 units')
   .option('--price1 <price>', 'Additional speed 1 price')
@@ -77,7 +77,16 @@ program
   .option('--price2 <price>', 'Additional speed 2 price')
   .option('--speed3 <speed>', 'Additional speed 3')
   .option('--units3 <units>', 'Additional speed 3 units')
-  .option('--price3 <price>', 'Additional speed 3 price');
+  .option('--price3 <price>', 'Additional speed 3 price')
+  .option('--tvTitle1 <title>', 'TV Option 1 Title')
+  .option('--tvSubtitle1 <subtitle>', 'TV Option 1 Subtitle')
+  .option('--tvAmount1 <amount>', 'TV Option 1 Price')
+  .option('--tvTitle2 <title>', 'TV Option 2 Title')
+  .option('--tvSubtitle2 <subtitle>', 'TV Option 2 Subtitle')
+  .option('--tvAmount2 <amount>', 'TV Option 2 Price')
+  .option('--tvTitle3 <title>', 'TV Option 3 Title')
+  .option('--tvSubtitle3 <subtitle>', 'TV Option 3 Subtitle')
+  .option('--tvAmount3 <amount>', 'TV Option 3 Price');
 
 addCommonOptions(program.commands[0]);
 
@@ -100,8 +109,113 @@ program.commands[0].action(async (options) => {
       }
     }
     
+    // Add TV options if provided
+    for (let i = 1; i <= 3; i++) {
+      if (options[`tvTitle${i}`]) {
+        params.append(`tvTitle${i}`, options[`tvTitle${i}`]);
+        params.append(`tvSubtitle${i}`, options[`tvSubtitle${i}`] || '');
+        params.append(`tvAmount${i}`, options[`tvAmount${i}`] || '15');
+      }
+    }
+    
     const url = `${options.url}/generate-pdf?${params.toString()}`;
     const pdfBuffer = await makeRequest(url, 'GET');
+    
+    fs.writeFileSync(options.output, pdfBuffer);
+    console.log(`PDF saved to ${options.output}`);
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
+  }
+});
+
+// New command for new format
+program
+  .command('create')
+  .description('Generate PDF using the new data format')
+  .option('--incSpeed <speed>', 'Included speed', '400')
+  .option('--incUnits <units>', 'Included speed units', 'Mbps')
+  .option('--addSpeed1 <speed>', 'Additional speed 1')
+  .option('--addUnits1 <units>', 'Additional speed 1 units', 'Mbps')
+  .option('--addPrice1 <price>', 'Additional speed 1 price', '15')
+  .option('--addSpeed2 <speed>', 'Additional speed 2')
+  .option('--addUnits2 <units>', 'Additional speed 2 units', 'Gbps')
+  .option('--addPrice2 <price>', 'Additional speed 2 price', '25')
+  .option('--tvTitle1 <title>', 'TV Package 1 Title')
+  .option('--tvSubtitle1 <subtitle>', 'TV Package 1 Subtitle')
+  .option('--tvAmount1 <amount>', 'TV Package 1 Price')
+  .option('--tvTitle2 <title>', 'TV Package 2 Title')
+  .option('--tvSubtitle2 <subtitle>', 'TV Package 2 Subtitle')
+  .option('--tvAmount2 <amount>', 'TV Package 2 Price')
+  .option('--addonTitle <title>', 'TV Addon Title')
+  .option('--addonSubtitle <subtitle>', 'TV Addon Subtitle')
+  .option('--addonAmount <amount>', 'TV Addon Price');
+
+addCommonOptions(program.commands[1]);
+
+program.commands[1].action(async (options) => {
+  try {
+    console.log('Generating PDF with new format...');
+    
+    // Construct data in new format
+    const postData = {
+      domain: options.domain,
+      speeds: [
+        {
+          speed: options.incSpeed,
+          units: options.incUnits,
+          included: true
+        }
+      ],
+      tv: [],
+      tv_addons: []
+    };
+    
+    // Add additional speeds if provided
+    if (options.addSpeed1) {
+      postData.speeds.push({
+        speed: options.addSpeed1,
+        units: options.addUnits1,
+        price: Number(options.addPrice1)
+      });
+    }
+    
+    if (options.addSpeed2) {
+      postData.speeds.push({
+        speed: options.addSpeed2,
+        units: options.addUnits2,
+        price: Number(options.addPrice2)
+      });
+    }
+    
+    // Add TV packages if provided (max 2)
+    if (options.tvTitle1) {
+      postData.tv.push({
+        title: options.tvTitle1,
+        subtitle: options.tvSubtitle1 || '',
+        amount: options.tvAmount1 || '39.99'
+      });
+    }
+    
+    if (options.tvTitle2) {
+      postData.tv.push({
+        title: options.tvTitle2,
+        subtitle: options.tvSubtitle2 || '',
+        amount: options.tvAmount2 || '45.99'
+      });
+    }
+    
+    // Add TV addon if provided
+    if (options.addonTitle) {
+      postData.tv_addons.push({
+        title: options.addonTitle,
+        subtitle: options.addonSubtitle || '',
+        amount: options.addonAmount || '15'
+      });
+    }
+    
+    const url = `${options.url}/generate-pdf`;
+    const pdfBuffer = await makeRequest(url, 'POST', JSON.stringify(postData));
     
     fs.writeFileSync(options.output, pdfBuffer);
     console.log(`PDF saved to ${options.output}`);
@@ -114,21 +228,12 @@ program.commands[0].action(async (options) => {
 // POST command
 program
   .command('post')
-  .description('Generate PDF using a POST request')
-  .option('-f, --file <file>', 'JSON file with configuration')
-  .option('--speed1 <speed>', 'Additional speed 1')
-  .option('--units1 <units>', 'Additional speed 1 units', 'GBPS')
-  .option('--price1 <price>', 'Additional speed 1 price', '25')
-  .option('--speed2 <speed>', 'Additional speed 2')
-  .option('--units2 <units>', 'Additional speed 2 units', 'GBPS')
-  .option('--price2 <price>', 'Additional speed 2 price', '35')
-  .option('--speed3 <speed>', 'Additional speed 3')
-  .option('--units3 <units>', 'Additional speed 3 units', 'GBPS')
-  .option('--price3 <price>', 'Additional speed 3 price', '45');
+  .description('Generate PDF using a POST request with JSON file')
+  .option('-f, --file <file>', 'JSON file with configuration');
 
-addCommonOptions(program.commands[1]);
+addCommonOptions(program.commands[2]);
 
-program.commands[1].action(async (options) => {
+program.commands[2].action(async (options) => {
   try {
     console.log('Generating PDF via POST request...');
     
@@ -142,24 +247,7 @@ program.commands[1].action(async (options) => {
       }
       postData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } else {
-      // Construct from command line options
-      postData = {
-        domain: options.domain,
-        includedSpeed: options.includedSpeed,
-        includedUnits: options.includedUnits,
-        additionalSpeeds: []
-      };
-      
-      // Add additional speeds if provided
-      for (let i = 1; i <= 3; i++) {
-        if (options[`speed${i}`]) {
-          postData.additionalSpeeds.push({
-            speed: options[`speed${i}`],
-            units: options[`units${i}`],
-            price: options[`price${i}`]
-          });
-        }
-      }
+      throw new Error('Please provide a JSON file with --file option');
     }
     
     const url = `${options.url}/generate-pdf`;

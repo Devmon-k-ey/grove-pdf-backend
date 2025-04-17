@@ -38,6 +38,9 @@ async function generateQRCode(text) {
 // Main function to modify PDF
 async function modifyPDF(data) {
   try {
+    // Convert from new format to internal format if needed
+    data = normalizeDataFormat(data);
+    
     const pdfPath = path.join(__dirname, './pdfs/grove.pdf');
     const existingPdfBytes = fs.readFileSync(pdfPath);
     
@@ -407,6 +410,51 @@ async function modifyPDF(data) {
   }
 }
 
+// Function to normalize data format between old and new JSON structures
+function normalizeDataFormat(data) {
+  // Create a deep copy to avoid modifying the original data
+  const normalizedData = JSON.parse(JSON.stringify(data));
+  
+  // Handle new format with speeds array
+  if (data.speeds && Array.isArray(data.speeds)) {
+    // Find the included speed (marked with included: true)
+    const includedSpeed = data.speeds.find(s => s.included === true);
+    
+    if (includedSpeed) {
+      normalizedData.includedSpeed = includedSpeed.speed;
+      normalizedData.includedUnits = includedSpeed.units;
+    }
+    
+    // Extract additional speeds (ones without included: true)
+    normalizedData.additionalSpeeds = data.speeds
+      .filter(s => s.included !== true)
+      .map(s => ({
+        speed: s.speed,
+        units: s.units,
+        price: s.price.toString()
+      }));
+  }
+  
+  // Handle new TV section (up to 2 items)
+  if (data.tv && Array.isArray(data.tv)) {
+    // If both tv and tv_addons exist, combine them
+    normalizedData.tv_addons = [...(data.tv || [])];
+    
+    // Add the tv_addons items (if they exist)
+    if (data.tv_addons && Array.isArray(data.tv_addons)) {
+      normalizedData.tv_addons = [...normalizedData.tv_addons, ...data.tv_addons];
+    }
+    
+    // Limit to 3 items maximum
+    normalizedData.tv_addons = normalizedData.tv_addons.slice(0, 3);
+  } else if (data.tv_addons && Array.isArray(data.tv_addons)) {
+    // Just use tv_addons if tv array doesn't exist
+    normalizedData.tv_addons = data.tv_addons.slice(0, 3);
+  }
+  
+  return normalizedData;
+}
+
 //GET test endpoint
 app.get('/', async (req, res) => {
   console.log('Live test...');
@@ -467,18 +515,8 @@ app.post('/generate-pdf', async (req, res) => {
   const clientIP = req.ip; // Get the client's IP address
   console.log('POST-Client IP:', clientIP);
   try {
-    const data = {
-      domain: req.body.domain || 'grove.xiber.net',
-      includedSpeed: req.body.includedSpeed || '400/400',
-      includedUnits: req.body.includedUnits || 'MBPS',
-      additionalSpeeds: req.body.additionalSpeeds || [],
-      tv_addons: req.body.tv_addons || []
-    };
-
-    // Limit to max 3 additional speeds
-    if (data.additionalSpeeds.length > 3) {
-      data.additionalSpeeds = data.additionalSpeeds.slice(0, 3);
-    }
+    // Accept the new data format directly
+    const data = req.body;
 
     const pdfBytes = await modifyPDF(data);
     
@@ -510,20 +548,8 @@ app.post('/upload-json', async (req, res) => {
     try {
       const jsonData = JSON.parse(jsonFile.data.toString());
       
-      const data = {
-        domain: jsonData.domain || 'grove.xiber.net',
-        includedSpeed: jsonData.includedSpeed || '400/400',
-        includedUnits: jsonData.includedUnits || 'MBPS',
-        additionalSpeeds: jsonData.additionalSpeeds || [],
-        tv_addons: jsonData.tv_addons || []
-      };
-
-      // Limit to max 3 additional speeds
-      if (data.additionalSpeeds.length > 3) {
-        data.additionalSpeeds = data.additionalSpeeds.slice(0, 3);
-      }
-
-      const pdfBytes = await modifyPDF(data);
+      // Pass the data directly to modifyPDF, which will normalize it
+      const pdfBytes = await modifyPDF(jsonData);
       
       res.contentType('application/pdf');
       res.send(Buffer.from(pdfBytes));
