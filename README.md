@@ -161,7 +161,3 @@ This application can be deployed to services like Render.com.
    - Build Command: `npm install`
    - Start Command: `npm start`
    - Environment Variable: `PORT=10000` (or any port)
-
-## License
-
-ISC 
