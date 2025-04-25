@@ -225,15 +225,120 @@ program.commands[1].action(async (options) => {
   }
 });
 
-// POST command
+// New command for products format
+program
+  .command('products')
+  .description('Generate PDF using the products data format from test.json')
+  .option('--incSpeed <speed>', 'Included speed', '250/250')
+  .option('--incUnits <units>', 'Included speed units', 'Mbps')
+  .option('--incTitle <title>', 'Included speed title', '250/250 Mbps')
+  .option('--incSubtitle <subtitle>', 'Included speed subtitle', 'Synchronous Speeds (Upload & Download)')
+  .option('--addSpeed1 <speed>', 'Additional speed 1', '500')
+  .option('--addUnits1 <units>', 'Additional speed 1 units', 'Mbps')
+  .option('--addPrice1 <price>', 'Additional speed 1 price', '15')
+  .option('--addTitle1 <title>', 'Additional speed 1 title', '500 Mbps Internet')
+  .option('--addSync1 <sync>', 'Additional speed 1 is synchronous', 'true')
+  .option('--addServiceID1 <id>', 'Additional speed 1 service ID', '215')
+  .option('--addSpeed2 <speed>', 'Additional speed 2', '1')
+  .option('--addUnits2 <units>', 'Additional speed 2 units', 'Gbps')
+  .option('--addPrice2 <price>', 'Additional speed 2 price', '25')
+  .option('--addTitle2 <title>', 'Additional speed 2 title', '1 Gbps Internet Upgrade')
+  .option('--addSync2 <sync>', 'Additional speed 2 is synchronous', 'true')
+  .option('--addServiceID2 <id>', 'Additional speed 2 service ID', '219')
+  .option('--tvTitle1 <title>', 'TV Package 1 Title', 'Xiber TV Gold (120+ channels)')
+  .option('--tvSubtitle1 <subtitle>', 'TV Package 1 Subtitle', '150+ Channels')
+  .option('--tvAmount1 <amount>', 'TV Package 1 Price', '62.99')
+  .option('--tvService1 <id>', 'TV Package 1 Service ID', '194674')
+  .option('--tvTitle2 <title>', 'TV Package 2 Title', 'Xiber TV Platinum (150+ channels)')
+  .option('--tvSubtitle2 <subtitle>', 'TV Package 2 Subtitle', '150+ Channels')
+  .option('--tvAmount2 <amount>', 'TV Package 2 Price', '74.99')
+  .option('--tvService2 <id>', 'TV Package 2 Service ID', '194675');
+
+addCommonOptions(program.commands[2]);
+
+program.commands[2].action(async (options) => {
+  try {
+    console.log('Generating PDF with products format...');
+    
+    // Construct data in products format
+    const postData = {
+      domain: options.domain,
+      products: {
+        internet: [
+          {
+            included: true,
+            speed: options.incSpeed,
+            units: options.incUnits,
+            title: options.incTitle,
+            subtitle: options.incSubtitle
+          },
+          {
+            serviceID: options.addServiceID1,
+            amount: parseInt(options.addPrice1, 10) || 15,
+            title: options.addTitle1,
+            speed: options.addSpeed1,
+            units: options.addUnits1,
+            sync: options.addSync1 === 'true',
+            subtitle: 'Synchronous Speeds (Upload & Download)'
+          },
+          {
+            serviceID: options.addServiceID2,
+            amount: parseInt(options.addPrice2, 10) || 25,
+            title: options.addTitle2,
+            speed: options.addSpeed2,
+            units: options.addUnits2,
+            sync: options.addSync2 === 'true',
+            subtitle: 'Synchronous Speeds (Upload & Download)'
+          }
+        ],
+        tv: [
+          {
+            serviceID: parseInt(options.tvService1, 10) || 194674,
+            title: options.tvTitle1,
+            subtitle: options.tvSubtitle1,
+            link_learnmore: "https://xiber.com/xibertv/channels/#tab-3:",
+            amount: options.tvAmount1
+          },
+          {
+            serviceID: parseInt(options.tvService2, 10) || 194675,
+            title: options.tvTitle2,
+            subtitle: options.tvSubtitle2,
+            link_learnmore: "https://xiber.com/xibertv/channels/#tab-3:",
+            amount: options.tvAmount2
+          }
+        ],
+        tv_addons: []
+      }
+    };
+    
+    const url = `${options.url}/generate-pdf`;
+    
+    try {
+      const pdfBuffer = await makeRequest(url, 'POST', JSON.stringify(postData));
+      fs.writeFileSync(options.output, pdfBuffer);
+      console.log(`PDF saved to ${options.output}`);
+    } catch (error) {
+      console.error('Server request failed:', error.message);
+      if (error.message.includes('400') || error.message.includes('500')) {
+        console.error('The server may not support the products format yet.');
+      }
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
+  }
+});
+
+// POST command for JSON file
 program
   .command('post')
   .description('Generate PDF using a POST request with JSON file')
   .option('-f, --file <file>', 'JSON file with configuration');
 
-addCommonOptions(program.commands[2]);
+addCommonOptions(program.commands[3]);
 
-program.commands[2].action(async (options) => {
+program.commands[3].action(async (options) => {
   try {
     console.log('Generating PDF via POST request...');
     
@@ -245,7 +350,12 @@ program.commands[2].action(async (options) => {
       if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${filePath}`);
       }
-      postData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      
+      try {
+        postData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      } catch (parseError) {
+        throw new Error(`Invalid JSON in file: ${parseError.message}`);
+      }
     } else {
       throw new Error('Please provide a JSON file with --file option');
     }

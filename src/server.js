@@ -412,47 +412,134 @@ async function modifyPDF(data) {
 
 // Function to normalize data format between old and new JSON structures
 function normalizeDataFormat(data) {
-  // Create a deep copy to avoid modifying the original data
-  const normalizedData = JSON.parse(JSON.stringify(data));
-  
-  // Handle new format with speeds array
-  if (data.speeds && Array.isArray(data.speeds)) {
-    // Find the included speed (marked with included: true)
-    const includedSpeed = data.speeds.find(s => s.included === true);
+  try {
+    // Create a deep copy to avoid modifying the original data
+    const normalizedData = JSON.parse(JSON.stringify(data));
     
-    if (includedSpeed) {
-      normalizedData.includedSpeed = includedSpeed.speed;
-      normalizedData.includedUnits = includedSpeed.units;
+    // Handle test.json format with products structure
+    if (data.products && data.products.internet) {
+      // Find the included speed (marked with included: true)
+      const includedSpeed = data.products.internet.find(s => s.included === true);
+      
+      if (includedSpeed) {
+        normalizedData.includedSpeed = includedSpeed.speed;
+        normalizedData.includedUnits = includedSpeed.units;
+      } else if (data.products.internet.length > 0) {
+        // Fallback if no included speed is found but internet products exist
+        console.warn('No included speed found, using the first internet product as default');
+        normalizedData.includedSpeed = data.products.internet[0].speed;
+        normalizedData.includedUnits = data.products.internet[0].units;
+      } else {
+        // Default values if no internet products exist
+        console.warn('No internet products found, using default values');
+        normalizedData.includedSpeed = '400/400';
+        normalizedData.includedUnits = 'Mbps';
+      }
+      
+      // Extract additional speeds (ones without included: true)
+      normalizedData.additionalSpeeds = data.products.internet
+        .filter(s => s.included !== true)
+        .map(s => ({
+          speed: s.speed,
+          units: s.units,
+          price: s.amount ? s.amount.toString() : '0'
+        }));
+    } 
+    // Handle new format with speeds array (from README)
+    else if (data.speeds && Array.isArray(data.speeds)) {
+      // Find the included speed (marked with included: true)
+      const includedSpeed = data.speeds.find(s => s.included === true);
+      
+      if (includedSpeed) {
+        normalizedData.includedSpeed = includedSpeed.speed;
+        normalizedData.includedUnits = includedSpeed.units;
+      } else if (data.speeds.length > 0) {
+        // Fallback if no included speed is found
+        console.warn('No included speed found, using the first speed as default');
+        normalizedData.includedSpeed = data.speeds[0].speed;
+        normalizedData.includedUnits = data.speeds[0].units;
+      } else {
+        // Default values if no speeds exist
+        console.warn('No speeds found, using default values');
+        normalizedData.includedSpeed = '400/400';
+        normalizedData.includedUnits = 'Mbps';
+      }
+      
+      // Extract additional speeds (ones without included: true)
+      normalizedData.additionalSpeeds = data.speeds
+        .filter(s => s.included !== true)
+        .map(s => ({
+          speed: s.speed,
+          units: s.units,
+          price: s.price ? s.price.toString() : '0'
+        }));
+    } else if (!normalizedData.includedSpeed || !normalizedData.includedUnits) {
+      // Maintain backward compatibility with legacy format
+      // Default values if neither products.internet nor speeds array exists
+      console.warn('Using legacy format or providing default values');
+      normalizedData.includedSpeed = normalizedData.includedSpeed || '400/400';
+      normalizedData.includedUnits = normalizedData.includedUnits || 'Mbps';
+      normalizedData.additionalSpeeds = normalizedData.additionalSpeeds || [];
     }
     
-    // Extract additional speeds (ones without included: true)
-    normalizedData.additionalSpeeds = data.speeds
-      .filter(s => s.included !== true)
-      .map(s => ({
-        speed: s.speed,
-        units: s.units,
-        price: s.price.toString()
+    // Handle TV section from test.json format
+    if (data.products && data.products.tv) {
+      normalizedData.tv_addons = [...(data.products.tv || [])].map(item => ({
+        title: item.title,
+        subtitle: item.subtitle,
+        amount: item.amount ? item.amount.toString() : '0'
       }));
-  }
-  
-  // Handle new TV section (up to 2 items)
-  if (data.tv && Array.isArray(data.tv)) {
-    // If both tv and tv_addons exist, combine them
-    normalizedData.tv_addons = [...(data.tv || [])];
-    
-    // Add the tv_addons items (if they exist)
-    if (data.tv_addons && Array.isArray(data.tv_addons)) {
-      normalizedData.tv_addons = [...normalizedData.tv_addons, ...data.tv_addons];
+      
+      // Add the tv_addons items if they exist
+      if (data.products.tv_addons && Array.isArray(data.products.tv_addons)) {
+        normalizedData.tv_addons = [
+          ...normalizedData.tv_addons, 
+          ...data.products.tv_addons.map(item => ({
+            title: item.title,
+            subtitle: item.subtitle,
+            amount: item.amount ? item.amount.toString() : '0'
+          }))
+        ];
+      }
+    }
+    // Handle original TV format from README
+    else if (data.tv && Array.isArray(data.tv)) {
+      // If both tv and tv_addons exist, combine them
+      normalizedData.tv_addons = [...(data.tv || [])];
+      
+      // Add the tv_addons items (if they exist)
+      if (data.tv_addons && Array.isArray(data.tv_addons)) {
+        normalizedData.tv_addons = [...normalizedData.tv_addons, ...data.tv_addons];
+      }
+    } else if (data.tv_addons && Array.isArray(data.tv_addons)) {
+      // Just use tv_addons if tv array doesn't exist
+      normalizedData.tv_addons = data.tv_addons;
+    } else {
+      // Ensure tv_addons exists
+      normalizedData.tv_addons = normalizedData.tv_addons || [];
     }
     
-    // Limit to 3 items maximum
-    normalizedData.tv_addons = normalizedData.tv_addons.slice(0, 3);
-  } else if (data.tv_addons && Array.isArray(data.tv_addons)) {
-    // Just use tv_addons if tv array doesn't exist
-    normalizedData.tv_addons = data.tv_addons.slice(0, 3);
+    // Limit TV options to 3 items maximum
+    if (normalizedData.tv_addons && normalizedData.tv_addons.length > 3) {
+      console.warn(`Limiting TV options from ${normalizedData.tv_addons.length} to 3 items`);
+      normalizedData.tv_addons = normalizedData.tv_addons.slice(0, 3);
+    }
+    
+    // Set domain from either format
+    normalizedData.domain = data.domain || 'grove.xiber.net';
+    
+    return normalizedData;
+  } catch (error) {
+    console.error('Error normalizing data format:', error);
+    // Return a basic structure with default values if normalization fails
+    return {
+      domain: 'grove.xiber.net',
+      includedSpeed: '400/400',
+      includedUnits: 'Mbps',
+      additionalSpeeds: [],
+      tv_addons: []
+    };
   }
-  
-  return normalizedData;
 }
 
 //GET test endpoint
@@ -468,15 +555,25 @@ app.get('/generate-pdf', async (req, res) => {
   try {
     const { domain, includedSpeed, includedUnits } = req.query;
     
+    // Validate domain or provide default
+    if (!domain || typeof domain !== 'string') {
+      console.warn('Invalid or missing domain, using default');
+    }
+    
     // Parse additional speeds from query params
     const additionalSpeeds = [];
     for (let i = 1; i <= 3; i++) {
       if (req.query[`speed${i}`]) {
-        additionalSpeeds.push({
-          speed: req.query[`speed${i}`],
-          units: req.query[`units${i}`],
-          price: req.query[`price${i}`]
-        });
+        try {
+          const speedItem = {
+            speed: req.query[`speed${i}`],
+            units: req.query[`units${i}`] || 'Mbps',
+            price: req.query[`price${i}`] || '0'
+          };
+          additionalSpeeds.push(speedItem);
+        } catch (err) {
+          console.warn(`Invalid data for speed option ${i}, skipping:`, err.message);
+        }
       }
     }
 
@@ -484,21 +581,33 @@ app.get('/generate-pdf', async (req, res) => {
     const tv_addons = [];
     for (let i = 1; i <= 3; i++) {
       if (req.query[`tvTitle${i}`]) {
-        tv_addons.push({
-          title: req.query[`tvTitle${i}`],
-          subtitle: req.query[`tvSubtitle${i}`],
-          amount: req.query[`tvAmount${i}`]
-        });
+        try {
+          const tvItem = {
+            title: req.query[`tvTitle${i}`],
+            subtitle: req.query[`tvSubtitle${i}`] || '',
+            amount: req.query[`tvAmount${i}`] || '0'
+          };
+          tv_addons.push(tvItem);
+        } catch (err) {
+          console.warn(`Invalid data for TV option ${i}, skipping:`, err.message);
+        }
       }
     }
 
     const data = {
       domain: domain || 'grove.xiber.net',
       includedSpeed: includedSpeed || '400/400',
-      includedUnits: includedUnits || 'MBPS',
+      includedUnits: includedUnits || 'Mbps',
       additionalSpeeds,
       tv_addons
     };
+
+    // Validate that we have minimum required data
+    if (!data.includedSpeed || !data.includedUnits) {
+      console.warn('Missing required speed data, using defaults');
+      data.includedSpeed = data.includedSpeed || '400/400';
+      data.includedUnits = data.includedUnits || 'Mbps';
+    }
 
     const pdfBytes = await modifyPDF(data);
     
@@ -506,7 +615,11 @@ app.get('/generate-pdf', async (req, res) => {
     res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error in GET request:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    res.status(500).json({ 
+      error: 'Failed to generate PDF',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -515,8 +628,34 @@ app.post('/generate-pdf', async (req, res) => {
   const clientIP = req.ip; // Get the client's IP address
   console.log('POST-Client IP:', clientIP);
   try {
+    // Validate that request body exists
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ 
+        error: 'Missing request body',
+        message: 'Request body must contain valid JSON data' 
+      });
+    }
+
     // Accept the new data format directly
     const data = req.body;
+    
+    // Basic validation for required fields based on format
+    if (!data.domain) {
+      console.warn('Domain not provided, using default');
+      data.domain = 'grove.xiber.net';
+    }
+    
+    // Check for at least one of the required speed formats
+    const hasLegacySpeed = data.includedSpeed && data.includedUnits;
+    const hasNewSpeedFormat = data.speeds && Array.isArray(data.speeds) && data.speeds.length > 0;
+    const hasProductsFormat = data.products && data.products.internet && 
+                             Array.isArray(data.products.internet) && 
+                             data.products.internet.length > 0;
+    
+    if (!hasLegacySpeed && !hasNewSpeedFormat && !hasProductsFormat) {
+      console.warn('No valid speed data provided in the request');
+      // We'll continue with defaults from normalizeDataFormat
+    }
 
     const pdfBytes = await modifyPDF(data);
     
@@ -524,7 +663,11 @@ app.post('/generate-pdf', async (req, res) => {
     res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error in POST request:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    res.status(500).json({ 
+      error: 'Failed to generate PDF',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -534,19 +677,53 @@ app.post('/upload-json', async (req, res) => {
   console.log('POST_JSON-Client IP:', clientIP);
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
-      return res.status(400).json({ error: 'No files were uploaded' });
+      return res.status(400).json({ 
+        error: 'No files were uploaded',
+        message: 'Please upload a valid JSON file'
+      });
     }
 
     // The name of the input field is "jsonFile"
     const jsonFile = req.files.jsonFile;
     
     if (!jsonFile.name.endsWith('.json')) {
-      return res.status(400).json({ error: 'Uploaded file must be a JSON file' });
+      return res.status(400).json({ 
+        error: 'Invalid file type',
+        message: 'Uploaded file must be a JSON file'
+      });
+    }
+
+    // Check file size (additional validation)
+    if (jsonFile.size > 1024 * 1024) { // Limit to 1MB
+      return res.status(400).json({
+        error: 'File too large',
+        message: 'JSON file must be smaller than 1MB'
+      });
     }
 
     // Parse the JSON from the file
     try {
       const jsonData = JSON.parse(jsonFile.data.toString());
+      
+      // Basic validation of required structure
+      if (!jsonData) {
+        return res.status(400).json({
+          error: 'Invalid JSON',
+          message: 'Uploaded file contains empty or invalid JSON'
+        });
+      }
+      
+      // Check for at least one of the required formats
+      const hasLegacyFormat = jsonData.includedSpeed || 
+                             (jsonData.additionalSpeeds && Array.isArray(jsonData.additionalSpeeds));
+      const hasNewFormat = jsonData.speeds && Array.isArray(jsonData.speeds);
+      const hasProductsFormat = jsonData.products && jsonData.products.internet && 
+                               Array.isArray(jsonData.products.internet);
+      
+      if (!hasLegacyFormat && !hasNewFormat && !hasProductsFormat) {
+        console.warn('JSON file is missing valid speed data structure');
+        // Will continue with defaults from normalizeDataFormat
+      }
       
       // Pass the data directly to modifyPDF, which will normalize it
       const pdfBytes = await modifyPDF(jsonData);
@@ -555,11 +732,19 @@ app.post('/upload-json', async (req, res) => {
       res.send(Buffer.from(pdfBytes));
     } catch (parseError) {
       console.error('Error parsing JSON file:', parseError);
-      res.status(400).json({ error: 'Invalid JSON format in uploaded file' });
+      res.status(400).json({ 
+        error: 'Invalid JSON format',
+        message: 'Could not parse the uploaded JSON file',
+        details: parseError.message
+      });
     }
   } catch (error) {
     console.error('Error in file upload:', error);
-    res.status(500).json({ error: 'Failed to generate PDF from uploaded file' });
+    res.status(500).json({
+      error: 'Failed to generate PDF',
+      message: 'An unexpected error occurred while processing the uploaded file',
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

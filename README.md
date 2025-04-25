@@ -11,6 +11,7 @@ A tool for automatically generating custom Grove PDF files with configurable spe
 - Supports up to 3 additional speed/unit/price configurations
 - Supports up to 3 TV addon packages
 - Automatic fallback to cheetah image when no TV data is provided
+- Supports multiple JSON data formats
 
 ## Usage
 
@@ -39,7 +40,7 @@ Query Parameters:
 
 #### POST /generate-pdf
 
-Generate a PDF using a JSON request body. Two data formats are supported:
+Generate a PDF using a JSON request body. Multiple data formats are supported:
 
 **Legacy Format:**
 ```json
@@ -93,6 +94,59 @@ Generate a PDF using a JSON request body. Two data formats are supported:
 }
 ```
 
+**Products Format:**
+```json
+{
+  "products": {
+    "internet": [
+      {
+        "included": true,
+        "speed": "250/250",
+        "units": "Mbps",
+        "title": "250/250 Mbps",
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      },
+      {
+        "serviceID": "215",
+        "amount": 15,
+        "title": "500 Mbps Internet",
+        "speed": "500",
+        "units": "Mbps",
+        "sync": true,
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      },
+      {
+        "serviceID": "219",
+        "amount": 25,
+        "title": "1 Gbps Internet Upgrade",
+        "speed": "1",
+        "units": "Gbps",
+        "sync": true,
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      }
+    ],
+    "tv": [
+      {
+        "serviceID": 194674,
+        "title": "Xiber TV Gold (120+ channels)",
+        "subtitle": "150+ Channels",
+        "link_learnmore": "https://xiber.com/xibertv/channels/#tab-3:",
+        "amount": "62.99"
+      },
+      {
+        "serviceID": 194675,
+        "title": "Xiber TV Platinum (150+ channels)",
+        "subtitle": "150+ Channels",
+        "link_learnmore": "https://xiber.com/xibertv/channels/#tab-3:",
+        "amount": "74.99"
+      }
+    ],
+    "tv_addons": []
+  },
+  "domain": "747living.xiber.net"
+}
+```
+
 ### CLI Tool
 
 #### Using Legacy Format (GET Request)
@@ -120,34 +174,95 @@ grove-pdf create -o output.pdf \
   --addonTitle "Premium Channels" --addonSubtitle "Showtime, STARZ, Encore, etc" --addonAmount 15
 ```
 
-#### Using JSON File (Both Formats Supported)
+#### Using Products Format
+
+```bash
+# Create PDF with products data format
+grove-pdf products -o output.pdf \
+  --domain 747living.xiber.net \
+  --incSpeed "250/250" --incUnits Mbps \
+  --incTitle "250/250 Mbps" --incSubtitle "Synchronous Speeds (Upload & Download)" \
+  --addSpeed1 500 --addUnits1 Mbps --addPrice1 15 \
+  --addTitle1 "500 Mbps Internet" --addServiceID1 215 \
+  --addSpeed2 1 --addUnits2 Gbps --addPrice2 25 \
+  --addTitle2 "1 Gbps Internet Upgrade" --addServiceID2 219 \
+  --tvTitle1 "Xiber TV Gold (120+ channels)" --tvSubtitle1 "150+ Channels" --tvAmount1 62.99 \
+  --tvService1 194674 \
+  --tvTitle2 "Xiber TV Platinum (150+ channels)" --tvSubtitle2 "150+ Channels" --tvAmount2 74.99 \
+  --tvService2 194675
+```
+
+#### Using JSON File (All Formats Supported)
 
 ```bash
 # Using a JSON configuration file
 grove-pdf post -f config.json -o output.pdf
 ```
 
-Example JSON configuration (`config.json`) in new format:
+Example JSON configuration (`config.json`) in products format:
 
 ```json
 {
-  "domain": "grove.xiber.net",
-  "speeds": [
-    {"speed": "400", "units": "Mbps", "included": true},
-    {"speed": "500", "units": "Mbps", "price": 15},
-    {"speed": "1", "units": "Gbps", "price": 25}
-  ],
-  "tv": [
-    {"title": "XiberTV Gold", "subtitle": "130+ Channels", "amount": "39.99"},
-    {"title": "XiberTV Platinum", "subtitle": "150+ Channels", "amount": "45.99"}
-  ],
-  "tv_addons": [
-    {"title": "Premium Channels", "subtitle": "Showtime, STARZ, Encore, etc", "amount": "15"}
-  ]
+  "products": {
+    "internet": [
+      {
+        "included": true,
+        "speed": "250/250",
+        "units": "Mbps",
+        "title": "250/250 Mbps",
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      },
+      {
+        "serviceID": "215",
+        "amount": 15,
+        "title": "500 Mbps Internet",
+        "speed": "500",
+        "units": "Mbps",
+        "sync": true,
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      },
+      {
+        "serviceID": "219",
+        "amount": 25,
+        "title": "1 Gbps Internet Upgrade",
+        "speed": "1",
+        "units": "Gbps",
+        "sync": true,
+        "subtitle": "Synchronous Speeds (Upload & Download)"
+      }
+    ],
+    "tv": [
+      {
+        "serviceID": 194674,
+        "title": "Xiber TV Gold (120+ channels)",
+        "subtitle": "150+ Channels",
+        "link_learnmore": "https://xiber.com/xibertv/channels/#tab-3:",
+        "amount": "62.99"
+      },
+      {
+        "serviceID": 194675,
+        "title": "Xiber TV Platinum (150+ channels)",
+        "subtitle": "150+ Channels",
+        "link_learnmore": "https://xiber.com/xibertv/channels/#tab-3:",
+        "amount": "74.99"
+      }
+    ],
+    "tv_addons": []
+  },
+  "domain": "747living.xiber.net"
 }
 ```
 
 Note: If no TV addons are specified in any request type, the PDF will automatically display the cheetah image in the TV section.
+
+## Error Handling
+
+The application includes improved error handling for all data formats:
+
+- Validation of required fields with appropriate fallbacks
+- Detailed error messages for invalid JSON or missing data
+- Graceful handling of malformed input with default values
+- Size limits on file uploads
 
 ## Deployment
 
