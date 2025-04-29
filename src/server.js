@@ -126,11 +126,25 @@ async function modifyPDF(data) {
       // }
       ///////////////////////////////////////////////////
 
-      // Draw Domain
+      // Draw Domain with dynamic font size
+      const maxDomainWidth = 300; // Maximum width for domain text
+      const minFontSize = 24; // Minimum font size
+      let domainFontSize = 44; // Starting font size
+      let domainWidth;
+
+      do {
+        domainWidth = brandonBold.widthOfTextAtSize(data.domain, domainFontSize);
+        if (domainWidth > maxDomainWidth && domainFontSize > minFontSize) {
+          domainFontSize -= 2; // Reduce font size by 2 points
+        } else {
+          break;
+        }
+      } while (true);
+
       page.drawText(data.domain, {
         x: 87,
         y: height - 190,
-        size: 44,
+        size: domainFontSize,
         font: brandonBold,
         color: rgb(1, 1, 1)
       });
