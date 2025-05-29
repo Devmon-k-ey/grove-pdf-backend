@@ -36,7 +36,7 @@ async function generateQRCode(text) {
 }
 
 // Main function to modify PDF
-async function modifyPDF(data) {
+async function modifyPDF(data, pdfTitle) {
   try {
     // Convert from new format to internal format if needed
     data = normalizeDataFormat(data);
@@ -143,7 +143,7 @@ async function modifyPDF(data) {
 
       page.drawText(data.domain, {
         x: 87,
-        y: height - 190,
+        y: height - 198,
         size: domainFontSize,
         font: brandonBold,
         color: rgb(1, 1, 1)
@@ -417,6 +417,11 @@ async function modifyPDF(data) {
       }
     }
 
+    // Set PDF document title metadata
+    if (pdfTitle && typeof pdfTitle === 'string') {
+      pdfDoc.setTitle(pdfTitle);
+    }
+
     return await pdfDoc.save();
   } catch (error) {
     console.error('Error modifying PDF:', error);
@@ -556,6 +561,48 @@ function normalizeDataFormat(data) {
   }
 }
 
+// Function to extract building name from request data
+function extractBuildingName(data) {
+  // Try to find building name in various possible locations
+  const possibleKeys = [
+    'buildingName',
+    'buildingname',
+    'building_Name',
+    'building_name',
+    'building',
+  ];
+
+  // Check in root level
+  for (const key of possibleKeys) {
+    if (data[key] && typeof data[key] === 'string') {
+      return data[key];
+    }
+  }
+
+  // Check in products structure
+  if (data.products) {
+    for (const key of possibleKeys) {
+      if (data.products[key] && typeof data.products[key] === 'string') {
+        return data.products[key];
+      }
+    }
+  }
+
+  // Check in any nested objects
+  for (const key in data) {
+    if (typeof data[key] === 'object' && data[key] !== null) {
+      for (const nestedKey of possibleKeys) {
+        if (data[key][nestedKey] && typeof data[key][nestedKey] === 'string') {
+          return data[key][nestedKey];
+        }
+      }
+    }
+  }
+
+  // Default name if no building name found
+  return 'Xiber Internet Flyer';
+}
+
 //GET test endpoint
 app.get('/', async (req, res) => {
   console.log('Live test...');
@@ -623,9 +670,10 @@ app.get('/generate-pdf', async (req, res) => {
       data.includedUnits = data.includedUnits || 'Mbps';
     }
 
-    const pdfBytes = await modifyPDF(data);
+    const pdfBytes = await modifyPDF(data, extractBuildingName(data));
     
     res.contentType('application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${extractBuildingName(data).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf"`);
     res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error in GET request:', error);
@@ -671,9 +719,10 @@ app.post('/generate-pdf', async (req, res) => {
       // We'll continue with defaults from normalizeDataFormat
     }
 
-    const pdfBytes = await modifyPDF(data);
+    const pdfBytes = await modifyPDF(data, extractBuildingName(data));
     
     res.contentType('application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${extractBuildingName(data).replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf"`);
     res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error('Error in POST request:', error);
@@ -740,7 +789,7 @@ app.post('/upload-json', async (req, res) => {
       }
       
       // Pass the data directly to modifyPDF, which will normalize it
-      const pdfBytes = await modifyPDF(jsonData);
+      const pdfBytes = await modifyPDF(jsonData, extractBuildingName(jsonData));
       
       res.contentType('application/pdf');
       res.send(Buffer.from(pdfBytes));
